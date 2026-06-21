@@ -1,0 +1,12 @@
+# Isolated env for the vendored DeepFormants formant estimator (F1-F4).
+# Kept separate from voice-is-unique so torch's ABI never touches the analysis env.
+# Invoked as a subprocess by the formant stage.
+name: deepformants
+channels:
+  - conda-forge
+dependencies:
+  - python=3.11
+  - numpy
+  - scipy
+  - pytorch-cpu        # conda-forge build → ABI-consistent with conda numpy/libstdc++
+  # NOTE: feature extraction also shells out to the system `sox` binary.

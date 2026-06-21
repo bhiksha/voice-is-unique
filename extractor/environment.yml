@@ -1,0 +1,16 @@
+name: voice-is-unique
+channels:
+  - conda-forge
+dependencies:
+  - python=3.11
+  - numpy
+  - scipy
+  - librosa
+  - pandas
+  - pyarrow              # all_utterances.parquet
+  - tqdm
+  - pytest
+  - pip
+  - pip:
+      - soundfile          # libsndfile-backed; decodes TIMIT NIST SPHERE directly
+      - praat-parselmouth  # Praat: F0, formants, jitter, shimmer, CPP, HNR (not on conda-forge here)

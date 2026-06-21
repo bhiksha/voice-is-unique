@@ -30,6 +30,15 @@ Pilot (CV21 English, 200→1000 speakers): the **Fano lower bound tracks log₂N
 ~constant ~92% of ceiling** (slope 0.86) — speaker distinctiveness is corpus-limited,
 not saturating. See [`common-voice/README.md`](common-voice/README.md).
 
+## [`extractor/`](extractor/) — the 40-feature utterance extractor
+The upstream feature extractor that produces the fixed 40-feature table both
+analyses consume (F0/jitter/shimmer, glottal-source via IAIF, formants via a
+hybrid DeepFormants + Burg estimator, harmonic/spectral features, VFI via DeepFry,
+alignment-native speech-rate/VOT/BGD). Vendors **DeepFry** (Chernyak et al. 2022)
+and **DeepFormants** (Dissen & Keshet 2016), both **MIT-licensed**, with provenance
+and pinned commits/SHA-256s in each `third_party/*/VENDOR.md`. See
+[`extractor/README.md`](extractor/README.md) and `extractor/details-of-extraction.md`.
+
 ## Shared core
 Both experiments use the same corpus-agnostic modules (`common.py`, `pr.py`,
 `mi.py`, `fano.py`, `vfp_hurdle.py`) — only the corpus, masking, and (for CV) the
@@ -38,7 +47,9 @@ scaling loop differ. Run `pytest` in either subdir.
 ## Data & licensing
 **No corpus audio or per-utterance features are committed** — TIMIT is LDC-licensed;
 Common Voice is CC0/CC-BY (its clip-ID manifest *is* committed). Each subdir's README
-documents the exact rerun steps from a separately-obtained corpus copy. The upstream
-40-feature extractor (DeepFry/DeepFormants-based) is a separate component.
+documents the exact rerun steps from a separately-obtained corpus copy.
 
-Code: MIT (see each subdir's `LICENSE`).
+Code: MIT — the analyses, the extractor wrapper, and the vendored DeepFry and
+DeepFormants (both MIT; their `LICENSE`/`VENDOR.md` retained under
+`extractor/third_party/`). The vendored model weights are redistributed here under
+those MIT terms.

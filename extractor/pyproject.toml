@@ -1,0 +1,19 @@
+[build-system]
+requires = ["setuptools>=64"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "timit-features"
+version = "0.0.1"
+description = "Reproducible 40-feature utterance-level acoustic extractor for TIMIT (voice-is-unique study)"
+requires-python = ">=3.11"
+
+[project.scripts]
+timit-features = "timit_features.cli:main"
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.pytest.ini_options]
+pythonpath = ["src"]
+testpaths = ["tests"]
