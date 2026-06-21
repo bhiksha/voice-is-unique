@@ -1,0 +1,58 @@
+{
+  "corpus": "TIMIT",
+  "input_parquet": "~/data/timit-feats/all_utterances.parquet",
+  "input_sha256_16": "812d61848620c064",
+  "speaker_key": "speaker_id",
+  "sex_key": "sex",
+
+  "feature_names": [
+    "F0", "jitter", "shimmer", "GCT", "CQ", "MFDR", "SQ", "NAQ", "SHR", "IHI",
+    "VFI", "semitone_SD_F0", "F1", "F2", "F3", "F4", "F5", "B1", "B2", "B3",
+    "B4", "B5", "Nasality", "spectral_skewness", "spectral_kurtosis",
+    "spectral_entropy", "spectral_rolloff", "spectral_flux", "alpha_ratio",
+    "LHR", "SPI", "GNE", "SSPF", "CPP", "dCPP", "RMS", "AMD", "speech_rate",
+    "VOT", "BGD"
+  ],
+
+  "transforms": {
+    "NAQ": "log", "alpha_ratio": "log", "LHR": "log", "SPI": "log",
+    "VFI": "hurdle_lognonzero"
+  },
+  "transform_default": "linear",
+  "zscore": "corpuswide_unit_variance",
+
+  "vfp": {
+    "name": "VFI",
+    "comment": "Prompt's VFP == our VFI (feature #11). state-1 = >0 (creaky proportion), state-2 = ==0 (measured no-creak, SIGNAL), state-3 = NaN (no voiced frames; none present in TIMIT). Magnitude = natural log of state-1 values, z-scored over state-1 only; exact zeros carried by the hurdle (MI zero-bin / PR Option C / Fano presence)."
+  },
+
+  "pr": {
+    "sigma_b_floor": 0.001,
+    "missing": "pairwise",
+    "also_report": "listwise",
+    "psd_repair": "nearest_psd_higham",
+    "n_boot": 1000,
+    "boot_seed": 0,
+    "fisher_order": true
+  },
+
+  "mi": {
+    "nbins": [2, 3, 5, 10],
+    "ref_nbin": 5,
+    "n_perm": 200,
+    "perm_seed": 0,
+    "weighted_entropy": true,
+    "no_missing_bin": true
+  },
+
+  "fano": {
+    "cv_folds": 5,
+    "cv_seed": 0,
+    "classifiers": ["logreg", "lda", "mlp"],
+    "impute": "train_fold_mean",
+    "missing_indicator": false
+  },
+
+  "conditions": ["pooled", "within_sex"],
+  "seed": 0
+}

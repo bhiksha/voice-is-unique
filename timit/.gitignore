@@ -1,0 +1,17 @@
+# ── NEVER commit corpus or per-utterance data (TIMIT is LDC-licensed) ──────────
+# The TIMIT root, the extracted feature tree, and any per-utterance artifact.
+timit-feats/
+all_utterances.parquet
+all_utterances.csv
+*.WAV
+*.PHN
+*.WRD
+*.TXT
+/data/
+TIMIT/
+
+__pycache__/
+*.pyc
+.pytest_cache/
+.ipynb_checkpoints/
+*.egg-info/

@@ -1,0 +1,18 @@
+# Never commit corpus audio or per-utterance/per-clip features (LDC / data hygiene)
+**/timit-feats/
+**/commonvoice/
+**/commonvoice-feats/
+**/all_utterances.parquet
+**/all_utterances.csv
+*.wav
+*.mp3
+*.WAV
+*.PHN
+*.WRD
+*.TextGrid
+/data/
+
+__pycache__/
+*.pyc
+.pytest_cache/
+*.egg-info/

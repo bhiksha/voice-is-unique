@@ -1,0 +1,66 @@
+{
+  "corpus": "CommonVoice",
+  "cv_release": "21.0",
+  "cv_language": "en",
+  "raw_dir": "~/data/commonvoice",
+  "feats_dir": "~/data/commonvoice-feats",
+  "input_parquet": "~/data/commonvoice-feats/all_utterances.parquet",
+  "manifest": "manifest/selected_clips.csv",
+
+  "speaker_key": "speaker_id",
+  "sex_key": "sex",
+
+  "feature_names": [
+    "F0", "jitter", "shimmer", "GCT", "CQ", "MFDR", "SQ", "NAQ", "SHR", "IHI",
+    "VFI", "semitone_SD_F0", "F1", "F2", "F3", "F4", "F5", "B1", "B2", "B3",
+    "B4", "B5", "Nasality", "spectral_skewness", "spectral_kurtosis",
+    "spectral_entropy", "spectral_rolloff", "spectral_flux", "alpha_ratio",
+    "LHR", "SPI", "GNE", "SSPF", "CPP", "dCPP", "RMS", "AMD", "speech_rate",
+    "VOT", "BGD"
+  ],
+
+  "selection": {
+    "clip_min_sec": 5.0,
+    "clips_per_speaker": 100,
+    "n_per_sex": 5000,
+    "gender": "binary_only",
+    "gender_comment": "Use only male/female self-reported labels; drop missing/other/non-binary from the speaker pool. CV21 'gender' column schema (male_masculine/female_feminine etc.) mapped to M/F in download.py.",
+    "clip_pick_rule": "first_100_by_sorted_clip_id",
+    "seed": 0
+  },
+
+  "masking": {
+    "method": "mfa",
+    "mfa_acoustic_model": "english_us_arpa",
+    "mfa_dictionary": "english_us_arpa",
+    "comment": "No gold alignments in CV; MFA forced alignment provides TIMIT-comparable phone-class masks. Frozen here; cross-corpus comparison to TIMIT carries this caveat."
+  },
+
+  "transforms": {
+    "NAQ": "log", "alpha_ratio": "log", "LHR": "log", "SPI": "log",
+    "VFI": "hurdle_lognonzero"
+  },
+  "transform_default": "linear",
+  "zscore": "fullset_unit_variance",
+  "zscore_comment": "Transform + z-score statistics computed ONCE on the full 10000-speaker set and reused for every scaling subset (only N varies).",
+
+  "vfp": {
+    "name": "VFI",
+    "comment": "Prompt's VFP == VFI. state-1 >0, state-2 ==0 (signal), state-3 NaN. Identical hurdle to TIMIT."
+  },
+
+  "pr":  {"sigma_b_floor": 0.001, "missing": "pairwise", "psd_repair": "nearest_psd_higham", "n_boot": 1000, "boot_seed": 0, "fisher_order": true},
+  "mi":  {"nbins": [2, 3, 5, 10], "ref_nbin": 5, "n_perm": 200, "perm_seed": 0, "weighted_entropy": true, "no_missing_bin": true},
+  "fano":{"cv_folds": 5, "cv_seed": 0, "classifiers": ["logreg", "lda", "mlp"], "impute": "train_fold_mean", "missing_indicator": false},
+
+  "scaling": {
+    "fixed_clips_per_speaker": 100,
+    "nested_order_seed": 0,
+    "full_grid_per_sex": [500, 1000, 1500, 2000, 2500, 3000, 3500, 4000, 4500, 5000],
+    "pilot_grid_per_sex": [100, 250, 500],
+    "pilot_clips_per_speaker": 100
+  },
+
+  "conditions": ["pooled", "within_sex"],
+  "seed": 0
+}

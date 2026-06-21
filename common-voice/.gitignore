@@ -1,0 +1,21 @@
+# ── NEVER commit audio or per-clip features ────────────────────────────────────
+# Common Voice is CC0/CC-BY, but we still commit only code + aggregate results +
+# the clip-ID manifest — never audio or per-clip feature files.
+commonvoice/
+commonvoice-feats/
+/data/
+*.mp3
+*.wav
+all_utterances.parquet
+all_utterances.csv
+*.TextGrid
+
+# MFA scratch
+mfa_data/
+*.zip
+
+__pycache__/
+*.pyc
+.pytest_cache/
+.ipynb_checkpoints/
+*.egg-info/
