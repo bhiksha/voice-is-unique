@@ -54,8 +54,36 @@ DEF_OUT = HOME / "data/commonvoice-feats"
 DEF_MANIFEST = CV_PKG / "manifest" / "feats_manifest_8000.tsv"
 
 
+DEF_CLAUDEMD = HOME / "data" / "CLAUDE.md"
+PROG_MARK = "- **LIVE PROGRESS"   # the line in CLAUDE.md this job rewrites every 1000 clips
+
+
 def log(*a):
     print(f"[{time.strftime('%H:%M:%S')}]", *a, flush=True)
+
+
+def update_claudemd(path, done, total, ok, rate, eta):
+    """Rewrite the single PROG_MARK line in CLAUDE.md (crash-recovery status). No-op if
+    the file or marker line is absent; never appends. Atomic replace."""
+    try:
+        p = Path(path)
+        if not p.exists():
+            return
+        new = (f"{PROG_MARK} (auto-updated every 1000 clips):** "
+               f"done={done}/{total} ok={ok} rate={rate:.2f}/s ETA={eta:.1f}h "
+               f"@{time.strftime('%Y-%m-%d %H:%M:%S')}\n")
+        lines = p.read_text().splitlines(keepends=True)
+        for i, ln in enumerate(lines):
+            if ln.lstrip().startswith(PROG_MARK):
+                lines[i] = new
+                break
+        else:
+            return  # marker not present — do not blindly append
+        tmp = str(p) + ".tmp"
+        Path(tmp).write_text("".join(lines))
+        os.replace(tmp, p)
+    except Exception:
+        pass
 
 
 def natkey(sd: str):
@@ -169,7 +197,7 @@ def build_tasks(chosen, corpus, wavroot, out):
                 continue
             tasks.append((sd, sex, clip, phrows, wav, out_json))
     log(f"tasks={len(tasks)} (already-done={skipped}, missing-wav={no_wav}, missing-phones={no_phones})")
-    return tasks
+    return tasks, skipped
 
 
 def assemble_parquet(chosen, out: Path):
@@ -200,6 +228,8 @@ def main():
     ap.add_argument("--n-per-sex", type=int, default=4000)
     ap.add_argument("--jobs", type=int, default=6)
     ap.add_argument("--limit", type=int, default=0, help="cap tasks (smoke test)")
+    ap.add_argument("--claudemd", default=str(DEF_CLAUDEMD),
+                    help="CLAUDE.md whose LIVE PROGRESS line is rewritten every 1000 clips")
     ap.add_argument("--assemble-only", action="store_true")
     args = ap.parse_args()
 
@@ -227,33 +257,47 @@ def main():
         assemble_parquet(chosen, out)
         return
 
-    tasks = build_tasks(chosen, corpus, wavroot, out)
+    tasks, n_skipped = build_tasks(chosen, corpus, wavroot, out)
     if args.limit:
         tasks = tasks[:args.limit]
     total = len(tasks)
+    total_all = n_skipped + total          # cumulative target across restarts
     if not total:
         log("nothing to do (all clips already extracted); assembling parquet.")
+        update_claudemd(args.claudemd, total_all, total_all, n_skipped, 0.0, 0.0)
         assemble_parquet(chosen, out)
         return
 
-    log(f"extracting {total} clips with jobs={args.jobs} (DeepFormants+DeepFry per clip) ...")
+    log(f"extracting {total} clips with jobs={args.jobs} (DeepFormants+DeepFry per clip) "
+        f"[{n_skipped} already done, cumulative target {total_all}] ...")
     t0 = time.time()
     done = ok = 0
+    last_kmark = n_skipped // 1000         # CLAUDE.md is rewritten when cumulative crosses each 1000
     prog = out / "_progress.json"
     with mp.Pool(args.jobs, maxtasksperchild=200) as pool:
         for sd, clip, dok, err in pool.imap_unordered(_extract_one, tasks, chunksize=1):
             done += 1
             ok += int(dok)
+            cum = n_skipped + done
             if done % 50 == 0 or done == total:
                 rate = done / max(1e-9, time.time() - t0)
                 eta_h = (total - done) / max(1e-9, rate) / 3600
-                json.dump({"done": done, "total": total, "ok": ok,
+                json.dump({"done": done, "total": total,
+                           "cumulative_done": cum, "total_all": total_all, "ok": ok,
                            "rate_per_s": round(rate, 3), "eta_hours": round(eta_h, 2),
                            "updated": time.strftime("%Y-%m-%d %H:%M:%S")}, open(prog, "w"))
                 if done % 200 == 0 or done == total:
-                    log(f"  {done}/{total} (ok={ok}, {rate:.2f}/s, ETA {eta_h:.1f} h)"
+                    log(f"  {cum}/{total_all} (ok={ok}, {rate:.2f}/s, ETA {eta_h:.1f} h)"
                         + (f"  last_err={err}" if err else ""))
+            if cum // 1000 > last_kmark:    # crossed a 1000-clip boundary -> checkpoint CLAUDE.md
+                last_kmark = cum // 1000
+                rate = done / max(1e-9, time.time() - t0)
+                eta_h = (total - done) / max(1e-9, rate) / 3600
+                update_claudemd(args.claudemd, cum, total_all, n_skipped + ok, rate, eta_h)
 
+    update_claudemd(args.claudemd, n_skipped + done, total_all, n_skipped + ok,
+                    done / max(1e-9, time.time() - t0),
+                    (total - done) / max(1e-9, done / max(1e-9, time.time() - t0)) / 3600)
     log(f"extraction pass done in {(time.time()-t0)/3600:.2f} h ({ok}/{done} decode_ok)")
     assemble_parquet(chosen, out)
     log("=== extract_feats_8k done ===")
