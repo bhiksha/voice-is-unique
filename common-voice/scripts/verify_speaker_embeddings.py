@@ -42,8 +42,14 @@ from src import common  # the shared TIMIT/pilot analysis core
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--config", default=str(CV_PKG / "CONFIG" / "common_voice.json"))
+    ap.add_argument("--parquet", default="",
+                    help="override input parquet (e.g. a fresh reproduction's all_utterances.parquet); "
+                         "outputs are written beside it")
     args = ap.parse_args()
     cfg = common.load_config(args.config)
+    if args.parquet:
+        cfg["input_parquet"] = args.parquet
+        cfg["feats_dir"] = str(Path(args.parquet).expanduser().parent)
     spk_key = cfg["speaker_key"]
     sex_key = cfg.get("sex_key", "sex")
     vfp = cfg["vfp"]["name"]

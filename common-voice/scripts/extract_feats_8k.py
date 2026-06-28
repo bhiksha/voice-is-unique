@@ -128,6 +128,20 @@ def select(corpus: Path, n_per_sex: int):
     return chosen, len(pools["F"]), len(pools["M"])
 
 
+def load_chosen_manifest(path: Path):
+    """Use a FROZEN feats manifest (speaker_dir, sex, ..., rel_path, clips) verbatim
+    instead of re-selecting/re-classifying — guarantees the exact study speakers + sex
+    labels for repeatability (no classifier drift)."""
+    rows = list(csv.DictReader(open(path), delimiter="\t"))
+    chosen = [{"speaker_dir": r["speaker_dir"], "sex": r["sex"],
+               "gender_source": r.get("gender_source", ""), "decision": r.get("decision", ""),
+               "rel_path": r["rel_path"], "client_id": r.get("client_id", ""),
+               "n_clips": r.get("n_clips", ""), "clips": r["clips"]} for r in rows]
+    nF = sum(c["sex"] == "F" for c in chosen)
+    nM = sum(c["sex"] == "M" for c in chosen)
+    return chosen, nF, nM
+
+
 def write_manifest(chosen, path: Path):
     path.parent.mkdir(parents=True, exist_ok=True)
     with open(path, "w", newline="") as fh:
@@ -226,6 +240,9 @@ def main():
     ap.add_argument("--out", default=str(DEF_OUT))
     ap.add_argument("--manifest", default=str(DEF_MANIFEST))
     ap.add_argument("--n-per-sex", type=int, default=4000)
+    ap.add_argument("--use-manifest", default="",
+                    help="use a FROZEN feats manifest (e.g. manifest/feats_manifest_8000.tsv) "
+                         "verbatim for the exact study speakers+sex, instead of re-selecting")
     ap.add_argument("--jobs", type=int, default=6)
     ap.add_argument("--limit", type=int, default=0, help="cap tasks (smoke test)")
     ap.add_argument("--claudemd", default=str(DEF_CLAUDEMD),
@@ -241,13 +258,19 @@ def main():
     corpus, wavroot, out = Path(args.corpus), Path(args.wavroot), Path(args.out)
     out.mkdir(parents=True, exist_ok=True)
 
-    chosen, n_f_pool, n_m_pool = select(corpus, args.n_per_sex)
-    write_manifest(chosen, Path(args.manifest))
+    if args.use_manifest:
+        chosen, n_f_pool, n_m_pool = load_chosen_manifest(Path(args.use_manifest))
+        log(f"using frozen manifest {args.use_manifest} (no re-selection)")
+    else:
+        chosen, n_f_pool, n_m_pool = select(corpus, args.n_per_sex)
+        write_manifest(chosen, Path(args.manifest))
     nF = sum(c["sex"] == "F" for c in chosen)
     nM = sum(c["sex"] == "M" for c in chosen)
     srcF = sorted({c["gender_source"] for c in chosen if c["sex"] == "F"})
+    src_note = (f"frozen manifest {args.use_manifest}" if args.use_manifest
+                else f"manifest -> {args.manifest}")
     log(f"selected {nF} female (pool {n_f_pool}) + {nM} male (pool {n_m_pool}) "
-        f"= {len(chosen)} speakers; manifest -> {args.manifest}")
+        f"= {len(chosen)} speakers; {src_note}")
     log(f"  female composition: " + ", ".join(
         f"{s}={sum(c['sex']=='F' and c['gender_source']==s for c in chosen)}" for s in ("self_reported", "estimated")))
     log(f"  male composition:   " + ", ".join(
