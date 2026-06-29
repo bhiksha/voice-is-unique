@@ -1,0 +1,3 @@
+Vendored from https://github.com/MLSpeech/Dr.VOT @ 6ea4316
+Light copy: GUI linux_praat removed (we feed voice_starts.txt from MFA; see common-voice/scripts/drvot_vot.py).
+predict.py patched: write_predictions (TextGrid output) skipped; only summary.csv is used.

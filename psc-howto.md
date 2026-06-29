@@ -1,7 +1,11 @@
-# Running the Common Voice download + 40-feature pipeline on PSC (Bridges-2)
+# Running the experiments on PSC (Bridges-2)
 
 Step-by-step for porting this package to **PSC Bridges-2**, where the 128-core nodes turn the
-multi-day laptop runs into a few hours.
+multi-day laptop runs into a few hours. Covers **both** turnkey experiments:
+- **TIMIT** — 40-feature extraction + PR/MI/Fano analysis (`timit/run_timit_psc.slurm`).
+- **Common Voice** — download the exact 8k-study clips → MFA-align → 40 features → **Dr.VOT** (merged
+  into the VOT feature) → speaker-count scaling analysis (balanced N=1000..8000) + female-only +
+  male-only (`common-voice/run_commonvoice_psc.slurm`).
 
 Placeholders used below: `<USER>` = your PSC username, `<GRANT>` = your allocation ID.
 
@@ -105,14 +109,34 @@ exit
 ```
 If that produces `${D}-feats/.../*.json`, the pipeline works.
 
-**5. Full run as a batch job.** The repo ships `common-voice/run_psc.slurm` (download+align →
-40-feature extract → verify). Edit the `GRANT=<EDIT_ME>` line (or `export GRANT=<GRANT>`), then:
+**5. Full runs as batch jobs.** The repo ships two end-to-end SLURM scripts. Set `GRANT` (edit the
+`GRANT=<EDIT_ME>` line or `export GRANT=<GRANT>`), then submit:
+
+**Common Voice — the entire experiment** (download exact 8k clips → MFA-align → 40 features →
+Dr.VOT merged into the VOT feature → verify → scaling analysis N=1000..8000 + female-only +
+male-only):
 ```bash
 cd $REPO/common-voice
-sbatch run_psc.slurm
-squeue -u $USER          # ST=PD pending, R running
-tail -f cv_feats.*.out
+export GRANT=<GRANT>
+sbatch run_commonvoice_psc.slurm
+squeue -u $USER ; tail -f cv_full.*.out
 ```
+Outputs: features `$OCEAN/vu/data/cv_study-feats/all_utterances.parquet`; VOT
+`…/cv_vot/vot_pilot.tsv`; analysis `…/cv-analysis/tables/scaling_{pooled,within_sex,female_only,male_only}.csv`
++ `reports/figs/scaling_all.png`.
+
+**TIMIT — the entire experiment** (40-feature extraction → PR/MI/Fano + report). TIMIT is
+LDC-licensed, so bring your own copy and point `TIMIT_ROOT` at the dir with `TRAIN/` and `TEST/`:
+```bash
+cd $REPO/timit
+export GRANT=<GRANT> TIMIT_ROOT=/ocean/projects/<GRANT>/$USER/timit/TIMIT
+sbatch run_timit_psc.slurm
+tail -f timit.*.out
+```
+Outputs: features `$OCEAN/vu/data/timit-feats/`; analysis `$OCEAN/vu/data/timit-analysis/`.
+
+Both jobs are **resumable** — re-`sbatch` continues (download/align/features/VOT-shards/JSONs all
+skip completed work).
 On a 128-core RM node the 40-feature extraction drops from ~2.7 days (laptop) to **~2–3 hours**;
 MFA alignment is similarly parallel.
 
@@ -140,16 +164,29 @@ The Dr.VOT VOT job (`common-voice/scripts/drvot_vot.py`, 422k voiceless stops) i
 laptop (~20 h, CPU). Dr.VOT has a CUDA path, so a Bridges-2 **GPU** partition (`-p GPU-shared
 --gres=gpu:v100-16:1`) would finish it in well under an hour — ask and a GPU SLURM script can be added.
 
-## Turnkey: it's down to clone → edit GRANT → sbatch
-These are committed in the repo, so PSC use is minimal:
-1. `extract_feats_8k.py` resolves the extractor relative to the repo (no symlink shim needed);
-2. `setup_psc.sh` (repo root) — builds the 4 conda envs + downloads MFA models;
-3. `common-voice/run_psc.slurm` — the batch job (download+align → extract → verify).
+## Turnkey: clone → edit GRANT → sbatch
+Everything is committed, so PSC use is minimal:
+1. `setup_psc.sh` (repo root) — builds the 5 named conda envs (voice-is-unique, deepformants,
+   deepfry, drvot, aligner) into Ocean + `pip install -e extractor` + MFA models;
+2. `common-voice/run_commonvoice_psc.slurm` — the full CV experiment (download→features+VOT→analysis);
+3. `timit/run_timit_psc.slurm` — the full TIMIT experiment (features→analysis);
+4. scripts resolve code/Dr.VOT paths relative to the repo (no symlink shim).
 
-So end to end on Bridges-2:
+End to end on Bridges-2:
 ```bash
 git clone https://github.com/bhiksha/voice-is-unique.git && cd voice-is-unique
 GRANT=<GRANT> bash setup_psc.sh
-conda run -p /ocean/projects/<GRANT>/$USER/vu/envs/voice-is-unique huggingface-cli login
-cd common-voice && export GRANT=<GRANT> && sbatch run_psc.slurm
+conda run -n voice-is-unique huggingface-cli login          # Common Voice is gated
+cd common-voice && export GRANT=<GRANT> && sbatch run_commonvoice_psc.slurm
+# TIMIT (bring your own LDC corpus):
+cd ../timit && export GRANT=<GRANT> TIMIT_ROOT=<path-to-TIMIT> && sbatch run_timit_psc.slurm
 ```
+
+## Verified vs. not
+- The **analysis driver** (`run_scaling.py`) and the per-stage scripts were exercised locally; the
+  `--shards/--max-parallel` Dr.VOT runner and feature/embedding steps ran on the laptop.
+- I have **not** run the SLURM scripts on a live PSC node — verify partition/walltime/flags against
+  the Bridges-2 user guide. The structure (named envs in Ocean, `RM` partition, `conda run -n`) is
+  standard Bridges-2.
+- Dr.VOT shard counts in `run_commonvoice_psc.slurm` (`--shards 64 --max-parallel 32`) are sized for
+  the 256 GB / 128-core RM node; tune if needed. On a GPU node Dr.VOT would be far faster (CUDA path).
