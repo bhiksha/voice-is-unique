@@ -43,8 +43,13 @@ import pandas as pd
 import soundfile as sf
 
 HOME = Path.home()
-EXTRACTOR_SRC = HOME / "claude/voice-is-unique/src"   # timit_features package
-CV_PKG = HOME / "claude/vu-pkg/common-voice"          # for `from src.extract import ...`
+# Resolve code paths RELATIVE TO THE REPO so this runs unchanged anywhere (laptop, PSC, ...).
+# This file lives at <repo>/common-voice/scripts/extract_feats_8k.py:
+CV_PKG = Path(os.environ.get("CV_PKG", Path(__file__).resolve().parent.parent))   # <repo>/common-voice
+EXTRACTOR_SRC = Path(os.environ.get(                                              # <repo>/extractor/src
+    "EXTRACTOR_SRC", CV_PKG.parent / "extractor" / "src"))
+if not (EXTRACTOR_SRC / "timit_features").is_dir():                               # fallback: dev-repo layout
+    EXTRACTOR_SRC = HOME / "claude/voice-is-unique/src"
 sys.path.insert(0, str(EXTRACTOR_SRC))
 sys.path.insert(0, str(CV_PKG))
 
