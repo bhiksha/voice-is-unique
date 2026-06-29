@@ -34,6 +34,7 @@ import csv
 import io
 import os
 import re
+import shutil
 import subprocess
 import sys
 import tarfile
@@ -49,8 +50,11 @@ from scipy.signal import resample_poly
 HERE = Path(__file__).resolve().parent
 MANIFEST_DIR = HERE.parent / "manifest"
 SR = 16000
-GID_PY = os.path.expanduser("~/miniconda3/envs/gender-id/bin/python")
-CONDA = os.path.expanduser("~/miniconda3/bin/conda")
+GID_PY = os.environ.get("CV_GID_PY", os.path.expanduser("~/miniconda3/envs/gender-id/bin/python"))
+# On PSC there is no ~/miniconda3; conda comes from `module load anaconda3`. Resolve from
+# CV_CONDA, then PATH, then the laptop default.
+CONDA = (os.environ.get("CV_CONDA") or shutil.which("conda")
+         or os.path.expanduser("~/miniconda3/bin/conda"))
 
 
 def log(*a):
@@ -88,7 +92,54 @@ def load_sentences(rid: str, split: str) -> dict:
     return sent
 
 
-def download_organize(clips, spk, out: Path, token: str, want_lab: bool):
+def load_sentences_local(cv_local, want: set) -> dict:
+    """clip -> sentence from a LOCAL extracted CV release (<cv_local>/en/*.tsv).
+    The HF 'train' split == the release's validated.tsv, so we scan the split TSVs
+    and keep only the wanted clips; stop once every wanted clip is found."""
+    import pandas as pd
+    endir = Path(cv_local) / "en"
+    sent = {}
+    for name in ("validated.tsv", "other.tsv", "train.tsv", "invalidated.tsv"):
+        p = endir / name
+        if not p.exists():
+            continue
+        for ch in pd.read_csv(p, sep="\t", usecols=["path", "sentence"], dtype=str,
+                              quoting=csv.QUOTE_NONE, on_bad_lines="skip", chunksize=200_000):
+            for path, s in zip(ch["path"].fillna(""), ch["sentence"].fillna("")):
+                if path in want:
+                    sent[path] = s
+        if len(sent) >= len(want):
+            break
+    return sent
+
+
+def verify_local(clips, cv_local) -> list:
+    """Fast presence check (NO copy/decode): confirm every manifest clip exists in a
+    LOCAL extracted CV release's en/clips/. Reports counts broken down by source
+    release (our clips span CV17/21/22, but CV22's clips/ is cumulative so all should
+    be present); returns the list of any missing clips. Used by --verify-only."""
+    clips_dir = Path(cv_local) / "en" / "clips"
+    by_rel: dict[str, list] = collections.defaultdict(lambda: [0, 0])  # release -> [present, missing]
+    missing = []
+    for c in clips:
+        present = (clips_dir / c["clip"]).exists()
+        by_rel[c["release"]][0 if present else 1] += 1
+        if not present:
+            missing.append(c)
+    n = len(clips)
+    log(f"verify-only: {clips_dir}")
+    log(f"verify-only: {n - len(missing)}/{n} clips present, {len(missing)} MISSING")
+    for rel in sorted(by_rel):
+        p, m = by_rel[rel]
+        log(f"   {rel}: present={p} missing={m}")
+    for c in missing[:30]:
+        log(f"   MISSING {c['speaker_dir']} {c['clip']} [{c['release']}/{c['split']}]")
+    if len(missing) > 30:
+        log(f"   ... and {len(missing) - 30} more")
+    return missing
+
+
+def download_organize(clips, spk, out: Path, token: str, want_lab: bool, cv_local=None):
     out.mkdir(parents=True, exist_ok=True)
     (out / "wavs").mkdir(exist_ok=True)
     head = {"Authorization": "Bearer " + token}
@@ -128,6 +179,26 @@ def download_organize(clips, spk, out: Path, token: str, want_lab: bool):
         sf.write(wav_path[clip], a.astype(np.float32), SR, subtype="PCM_16")
         if want_lab:
             lab_path[clip].write_text(sentence, encoding="utf-8")
+
+    # ---- LOCAL source: copy clips straight from an extracted CV release on disk ----
+    if cv_local:
+        clips_dir = Path(cv_local) / "en" / "clips"
+        need = [c["clip"] for c in clips if not have(c["clip"])]
+        sentences = load_sentences_local(cv_local, set(need)) if want_lab else {}
+        log(f"local CV release {clips_dir}: {len(need)} clips to copy")
+        missing = 0
+        for i, clip in enumerate(need, 1):
+            src = clips_dir / clip
+            if not src.exists():
+                missing += 1
+                continue
+            extract(clip, src.read_bytes(), sentences.get(clip, ""))
+            if i % 5000 == 0:
+                log(f"  ... {i}/{len(need)} copied")
+        leftover = [c["clip"] for c in clips if not have(c["clip"])]
+        log(f"local organize done; still-missing={len(leftover)} "
+            f"(not present in release: {missing})")
+        return leftover
 
     for (rid, split), group in sorted(by_group.items()):
         need = {c for c in group if not have(c)}
@@ -263,17 +334,32 @@ def main():
     ap.add_argument("--skip-classify", action="store_true")
     ap.add_argument("--limit", type=int, default=0,
                     help="rebuild only the first N speakers (smoke test / partial rebuild)")
+    ap.add_argument("--cv-local", default=os.environ.get("CV_LOCAL"),
+                    help="path to an extracted CV release (dir containing en/clips + en/*.tsv); "
+                         "copy clips from there instead of downloading from HuggingFace")
+    ap.add_argument("--verify-only", action="store_true",
+                    help="with --cv-local: only check that every manifest clip exists in the "
+                         "release's en/clips/ (no copy/decode/align); exit nonzero if any missing")
     args = ap.parse_args()
 
     out = Path(args.out)
+    cv_local = args.cv_local
     clips, spk = read_manifest(Path(args.manifest_dir))
     if args.limit:
         keep = set(list(spk)[:args.limit])
         spk = {sd: r for sd, r in spk.items() if sd in keep}
         clips = [c for c in clips if c["speaker_dir"] in keep]
-    log(f"manifest: {len(spk)} speakers, {len(clips)} clips -> out={out}")
+    src = f"local:{cv_local}" if cv_local else "HuggingFace"
+    log(f"manifest: {len(spk)} speakers, {len(clips)} clips -> out={out}  (source: {src})")
 
-    download_organize(clips, spk, out, _token(), want_lab=args.align)
+    if args.verify_only:
+        if not cv_local:
+            sys.exit("--verify-only requires --cv-local (or CV_LOCAL)")
+        missing = verify_local(clips, cv_local)
+        sys.exit(1 if missing else 0)
+
+    token = "" if cv_local else _token()
+    download_organize(clips, spk, out, token, want_lab=args.align, cv_local=cv_local)
     write_speaker_map(clips, spk, out)
     if args.align:
         align(out)

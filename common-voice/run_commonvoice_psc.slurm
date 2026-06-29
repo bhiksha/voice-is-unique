@@ -21,13 +21,18 @@ DATA=$OCEAN/vu/data/cv_study          # corpus tree + wavs + phone_segments.parq
 FEATS=${DATA}-feats                   # per-clip JSONs + all_utterances.parquet
 VOT=$OCEAN/vu/data/cv_vot             # Dr.VOT working dir + vot_pilot.tsv
 ANALYSIS=$OCEAN/vu/data/cv-analysis
+# Extracted CV22 release already on PSC (shared) -> copy clips locally instead of
+# downloading from HuggingFace. Override with CV_LOCAL=... if the path changes.
+CV_LOCAL=${CV_LOCAL:-/ocean/projects/cis220031p/shared/cv22-new-shared/cv-corpus-22.0-2025-06-20}
+# Keep MFA's models + (large) alignment temp on Ocean, NOT in the 25 GB $HOME.
+export MFA_ROOT_DIR=${MFA_ROOT_DIR:-$OCEAN/vu/mfa}
 module load anaconda3
-export HF_TOKEN=$(cat ~/.cache/huggingface/token)
+export HF_TOKEN=$(cat ~/.cache/huggingface/token 2>/dev/null || true)   # unused in local mode
 cd "$REPO/common-voice"
 
-echo ">> [1/6] download exact 8k-study clips + decode + MFA-align"
+echo ">> [1/6] organize exact 8k-study clips from local CV release + decode + MFA-align"
 conda run -n voice-is-unique python scripts/reproduce_corpus.py \
-    --manifest-dir manifest/study8k --out "$DATA" --align --skip-classify
+    --manifest-dir manifest/study8k --out "$DATA" --cv-local "$CV_LOCAL" --align --skip-classify
 
 echo ">> [2/6] 40-feature extraction (128-core node)"
 conda run -n voice-is-unique python scripts/extract_feats_8k.py \
