@@ -19,7 +19,11 @@ FEATS=$O/vu/data/cv_feats
 REPO=$O/vu/repo/voice-is-unique/common-voice
 CH=$(printf "%s/vu/chunks/chunk_%03d.tsv" "$O" "$SLURM_ARRAY_TASK_ID")
 cd "$REPO/scripts"
-echo "[task $SLURM_ARRAY_TASK_ID] chunk=$CH  $(date)"
+# DeepFormants/DeepFry are shelled out via $CV_CONDA (the extractor's default
+# ~/miniconda3/bin/conda does not exist on Bridges). This system conda resolves the
+# deepformants/deepfry envs by name via the envs_dirs we registered ($O/vu/envs).
+export CV_CONDA=/opt/packages/anaconda3-2024.10-1/bin/conda
+echo "[task $SLURM_ARRAY_TASK_ID] chunk=$CH  CV_CONDA=$CV_CONDA  $(date)"
 conda run -n voice-is-unique python -u extract_feats_8k.py \
     --use-manifest "$CH" --no-assemble --claudemd /dev/null \
     --corpus "$DATA" --wavroot "$DATA/wavs" --out "$FEATS" --jobs 12

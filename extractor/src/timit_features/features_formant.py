@@ -19,7 +19,7 @@ from timit_features.config import Config, PHONE_CLASS, SONORANT_CLASSES
 from timit_features import dsp
 
 _SON = set(SONORANT_CLASSES)
-_CONDA = os.path.expanduser("~/miniconda3/bin/conda")
+_CONDA = os.path.expanduser(os.environ.get("CV_CONDA", "~/miniconda3/bin/conda"))
 _DF_DIR = os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(__file__))),
                        "third_party", "deepformants")
 _DF_INFER = os.path.join(_DF_DIR, "df_infer.py")

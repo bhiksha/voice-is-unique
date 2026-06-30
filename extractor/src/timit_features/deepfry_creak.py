@@ -20,7 +20,7 @@ import soundfile as sf
 
 from timit_features.config import Config
 
-_CONDA = os.path.expanduser("~/miniconda3/bin/conda")
+_CONDA = os.path.expanduser(os.environ.get("CV_CONDA", "~/miniconda3/bin/conda"))
 _DF_DIR = os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(__file__))),
                        "third_party", "deepfry")
 _MODELS = {
