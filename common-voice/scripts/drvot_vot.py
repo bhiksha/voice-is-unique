@@ -23,7 +23,8 @@ DRVOT = Path(os.environ.get("DRVOT_DIR",
 DRVOT_PY = Path(os.environ.get("DRVOT_PY", HOME / "miniconda3/envs/drvot/bin/python"))
 CORPUS = Path(os.environ.get("CV_CORPUS", HOME / "data/commonvoice"))
 WAVROOT = Path(os.environ.get("CV_WAVROOT", HOME / "cv_align/corpus"))
-MANIFEST = Path(__file__).resolve().parent.parent / "manifest" / "feats_manifest_8000.tsv"
+MANIFEST = Path(os.environ.get("CV_MANIFEST",
+    str(Path(__file__).resolve().parent.parent / "manifest" / "feats_manifest_8000.tsv")))
 AUDIT = HOME / "data/commonvoice-feats/noise_audit.parquet"
 VOICELESS = {"P", "T", "K"}
 SR = 16000

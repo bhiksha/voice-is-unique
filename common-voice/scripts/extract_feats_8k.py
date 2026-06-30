@@ -253,6 +253,9 @@ def main():
     ap.add_argument("--claudemd", default=str(DEF_CLAUDEMD),
                     help="CLAUDE.md whose LIVE PROGRESS line is rewritten every 1000 clips")
     ap.add_argument("--assemble-only", action="store_true")
+    ap.add_argument("--no-assemble", action="store_true",
+                    help="skip parquet assembly (for array tasks; assemble once at the end "
+                         "with --assemble-only over the full manifest)")
     args = ap.parse_args()
 
     # keep per-worker BLAS/torch threads at 1 so `jobs` subprocesses don't oversubscribe 8 cores
@@ -291,9 +294,11 @@ def main():
     total = len(tasks)
     total_all = n_skipped + total          # cumulative target across restarts
     if not total:
-        log("nothing to do (all clips already extracted); assembling parquet.")
+        log("nothing to do (all clips already extracted)"
+            + ("" if args.no_assemble else "; assembling parquet."))
         update_claudemd(args.claudemd, total_all, total_all, n_skipped, 0.0, 0.0)
-        assemble_parquet(chosen, out)
+        if not args.no_assemble:
+            assemble_parquet(chosen, out)
         return
 
     log(f"extracting {total} clips with jobs={args.jobs} (DeepFormants+DeepFry per clip) "
@@ -327,7 +332,8 @@ def main():
                     done / max(1e-9, time.time() - t0),
                     (total - done) / max(1e-9, done / max(1e-9, time.time() - t0)) / 3600)
     log(f"extraction pass done in {(time.time()-t0)/3600:.2f} h ({ok}/{done} decode_ok)")
-    assemble_parquet(chosen, out)
+    if not args.no_assemble:
+        assemble_parquet(chosen, out)
     log("=== extract_feats_8k done ===")
 
 
