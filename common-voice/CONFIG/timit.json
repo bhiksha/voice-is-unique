@@ -1,0 +1,52 @@
+{
+  "corpus": "TIMIT",
+  "feats_dir": "~/data/timit-feats",
+  "input_parquet": "~/data/timit-feats/all_utterances.parquet",
+
+  "speaker_key": "speaker_id",
+  "sex_key": "sex",
+
+  "feature_names": [
+    "F0", "jitter", "shimmer", "GCT", "CQ", "MFDR", "SQ", "NAQ", "SHR", "IHI",
+    "VFI", "semitone_SD_F0", "F1", "F2", "F3", "F4", "F5", "B1", "B2", "B3",
+    "B4", "B5", "Nasality", "spectral_skewness", "spectral_kurtosis",
+    "spectral_entropy", "spectral_rolloff", "spectral_flux", "alpha_ratio",
+    "LHR", "SPI", "GNE", "SSPF", "CPP", "dCPP", "RMS", "AMD", "speech_rate",
+    "VOT", "BGD"
+  ],
+
+  "masking": {
+    "method": "timit_gold",
+    "comment": "TIMIT ships gold phone alignments (closure/release split), so phone-class masks and label-based VOT are exact. This is the reference corpus; CV uses MFA as a TIMIT-comparable substitute."
+  },
+
+  "transforms": {
+    "NAQ": "log", "alpha_ratio": "log", "LHR": "log", "SPI": "log",
+    "VFI": "hurdle_lognonzero"
+  },
+  "transform_default": "linear",
+  "zscore": "fullset_unit_variance",
+  "zscore_comment": "Transform + z-score statistics computed ONCE on the full 630-speaker set and reused for every scaling subset (only N varies). Same procedure as CV (corpus-specific stats).",
+
+  "vfp": {
+    "name": "VFI",
+    "comment": "VFP == VFI. state-1 >0, state-2 ==0 (signal), state-3 NaN."
+  },
+
+  "pr":  {"sigma_b_floor": 0.001, "missing": "pairwise", "psd_repair": "nearest_psd_higham", "n_boot": 1000, "boot_seed": 0, "fisher_order": true},
+  "mi":  {"nbins": [2, 3, 5, 10], "ref_nbin": 5, "n_perm": 200, "perm_seed": 0, "weighted_entropy": true, "no_missing_bin": true},
+  "fano":{"cv_folds": 5, "cv_seed": 0, "classifiers": ["logreg", "lda", "mlp"], "impute": "train_fold_mean", "missing_indicator": false},
+
+  "scaling": {
+    "fixed_clips_per_speaker": 10,
+    "nested_order_seed": 0,
+    "grid_all":         [100, 200, 300, 400, 500, 630],
+    "grid_per_sex":     [40, 80, 120, 160, 192],
+    "grid_female_only": [40, 80, 120, 160, 192],
+    "grid_male_only":   [100, 200, 300, 400, 438],
+    "grid_comment": "TIMIT = 630 speakers (438 M / 192 F). 'all' uses the entire (unbalanced) set up to 630; within_sex/female_only use per-sex sizes capped at 192; male_only capped at 438."
+  },
+
+  "conditions": ["all", "within_sex", "female_only", "male_only"],
+  "seed": 0
+}
