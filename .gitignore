@@ -12,6 +12,10 @@
 *.TextGrid
 /data/
 
+# Claude Code working-context notes — not part of the reproducibility package
+CLAUDE.md
+**/CLAUDE.md
+
 __pycache__/
 *.pyc
 .pytest_cache/

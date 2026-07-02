@@ -5,6 +5,30 @@ acoustic representation of voice — measured three ways (effective dimensionali
 an upper bound, and a lower bound on joint speaker information) and shown to scale
 with the number of speakers rather than saturating at a voice-imposed limit.
 
+## Reproduce (one command per experiment)
+
+After a one-time setup — conda envs + data + a Hugging Face token, see **[SETUP.md](SETUP.md)**:
+
+```bash
+# TIMIT (reference experiment) — supply TIMIT audio from the LDC at $TIMIT_ROOT
+./reproduce_timit.sh
+
+# Common Voice (INCLUDES the corpus download from Hugging Face)
+./reproduce_commonvoice.sh
+```
+
+Each script runs its whole pipeline end to end and writes a report + tables + figures:
+extraction → analysis (TIMIT); download → MFA-align → 40-feature extract → Dr.VOT VOT →
+speaker-count scaling analysis (Common Voice). Both are **resumable** and **deterministic**
+(fixed seeds). Prepend **`PILOT=1`** to validate the entire pipeline in minutes on a small
+subset before committing to the full (multi-day) run. On an HPC cluster, use the turnkey
+`common-voice/run_commonvoice_psc.slurm` + the `common-voice/psc_array/` job arrays — see
+**[psc-howto.md](psc-howto.md)** and `setup_psc.sh`.
+
+Outputs (no corpus audio/features are committed — see *Data & licensing*):
+- **TIMIT** → `timit/reports/report.md`, `timit/tables/`, `timit/reports/figs/`
+- **Common Voice** → `$CV_ANALYSIS/reports/scaling_report.txt`, `.../tables/scaling_*.csv`, `.../reports/figs/scaling_all.png`
+
 Two corpora, one shared corpus-agnostic analysis core:
 
 ## [`timit/`](timit/) — PR · summed-MI · Fano on TIMIT
