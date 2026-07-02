@@ -13,11 +13,10 @@ authors:
     given-names: Bhiksha
     affiliation: Carnegie Mellon University
     email: bhiksha@cs.cmu.edu
-    # orcid: "https://orcid.org/XXXX-XXXX-XXXX-XXXX"   # TODO: add ORCID
+    orcid: "https://orcid.org/0000-0003-0038-5513"
   - family-names: Singh
     given-names: Rita
     affiliation: Carnegie Mellon University
-  # TODO: add any remaining co-authors here, each as a - family-names:/given-names:/affiliation: block
 repository-code: "https://github.com/bhiksha/voice-is-unique"
 url: "https://github.com/bhiksha/voice-is-unique"
 license: MIT
@@ -38,9 +37,9 @@ preferred-citation:
   authors:
     - family-names: Raj
       given-names: Bhiksha
+      orcid: "https://orcid.org/0000-0003-0038-5513"
     - family-names: Singh
       given-names: Rita
-    # TODO: confirm the full author list and its order
   journal: "Proceedings of the National Academy of Sciences"
   year: 2026            # TODO: update on publication
   # volume: 000         # TODO
