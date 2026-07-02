@@ -1,0 +1,42 @@
+cff-version: 1.2.0
+message: "If you use this software or its results, please cite it as below."
+title: voice-is-unique
+abstract: >-
+  Code and reproducible pipelines measuring how much speaker identity a fixed
+  40-feature, utterance-level acoustic representation of voice carries — via
+  effective dimensionality (participation ratio), a summed mutual-information
+  upper bound, and a Fano lower bound — on TIMIT and Common Voice, with a
+  speaker-count scaling sweep.
+type: software
+authors:
+  - family-names: Raj
+    given-names: Bhiksha
+    affiliation: Carnegie Mellon University
+    email: bhiksha@cs.cmu.edu
+    # orcid: "https://orcid.org/XXXX-XXXX-XXXX-XXXX"   # TODO: add ORCID
+  # TODO: add co-authors here, each as a - family-names:/given-names:/affiliation: block
+repository-code: "https://github.com/bhiksha/voice-is-unique"
+url: "https://github.com/bhiksha/voice-is-unique"
+license: MIT
+keywords:
+  - speaker individuality
+  - voice biometrics
+  - acoustic features
+  - mutual information
+  - participation ratio
+  - TIMIT
+  - Common Voice
+
+# Once the PNAS paper is published, complete the fields below; tools will then
+# prefer this article citation over the software entry above.
+preferred-citation:
+  type: article
+  title: "TODO: paper title"
+  authors:
+    - family-names: Raj
+      given-names: Bhiksha
+    # TODO: full author list, in order
+  journal: "Proceedings of the National Academy of Sciences"
+  year: 2026            # TODO: update on publication
+  # volume: 000         # TODO
+  # doi: "10.1073/pnas.XXXXXXXXXX"   # TODO
