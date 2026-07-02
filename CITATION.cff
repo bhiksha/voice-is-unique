@@ -14,7 +14,10 @@ authors:
     affiliation: Carnegie Mellon University
     email: bhiksha@cs.cmu.edu
     # orcid: "https://orcid.org/XXXX-XXXX-XXXX-XXXX"   # TODO: add ORCID
-  # TODO: add co-authors here, each as a - family-names:/given-names:/affiliation: block
+  - family-names: Singh
+    given-names: Rita
+    affiliation: Carnegie Mellon University
+  # TODO: add any remaining co-authors here, each as a - family-names:/given-names:/affiliation: block
 repository-code: "https://github.com/bhiksha/voice-is-unique"
 url: "https://github.com/bhiksha/voice-is-unique"
 license: MIT
@@ -31,11 +34,13 @@ keywords:
 # prefer this article citation over the software entry above.
 preferred-citation:
   type: article
-  title: "TODO: paper title"
+  title: "The distinctiveness of human voice"
   authors:
     - family-names: Raj
       given-names: Bhiksha
-    # TODO: full author list, in order
+    - family-names: Singh
+      given-names: Rita
+    # TODO: confirm the full author list and its order
   journal: "Proceedings of the National Academy of Sciences"
   year: 2026            # TODO: update on publication
   # volume: 000         # TODO
